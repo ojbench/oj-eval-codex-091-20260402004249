@@ -190,9 +190,9 @@ class ESet {
 
     static void destroy(Node *cur) { /* unused after pooling; keep stub to avoid refactors */ }
 
-    static Node* clone(Node *cur) {
+    Node* clone(Node *cur) {
         if (!cur) return nullptr;
-        Node *n = new Node(cur->key, cur->prio);
+        Node *n = allocate_node(cur->key, cur->prio);
         n->l = clone(cur->l);
         n->r = clone(cur->r);
         pull(n);
@@ -258,6 +258,9 @@ public:
     }
 
     ESet(ESet &&other) noexcept : root(other.root), comp(std::move(other.comp)), rng(0xC0FFEEu) {
+        // Steal resources from other
+        pool = std::move(other.pool);
+        free_list = std::move(other.free_list);
         other.root = nullptr;
     }
     ESet& operator=(ESet &&other) noexcept {
