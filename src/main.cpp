@@ -90,7 +90,7 @@ class ESet {
         }
     }
 
-    static Node* find_node(Node *cur, const Key &k, Compare &comp) {
+    static Node* find_node(Node *cur, const Key &k, const Compare &comp) {
         while (cur) {
             if (!comp(k, cur->key) && !comp(cur->key, k)) return cur;
             if (comp(k, cur->key)) cur = cur->l; else cur = cur->r;
@@ -98,7 +98,7 @@ class ESet {
         return nullptr;
     }
 
-    static Node* lower_node(Node *cur, const Key &k, Compare &comp) {
+    static Node* lower_node(Node *cur, const Key &k, const Compare &comp) {
         Node *ans = nullptr;
         while (cur) {
             if (!comp(cur->key, k)) { ans = cur; cur = cur->l; }
@@ -106,7 +106,7 @@ class ESet {
         }
         return ans;
     }
-    static Node* upper_node(Node *cur, const Key &k, Compare &comp) {
+    static Node* upper_node(Node *cur, const Key &k, const Compare &comp) {
         Node *ans = nullptr;
         while (cur) {
             if (comp(k, cur->key)) { ans = cur; cur = cur->l; }
@@ -122,7 +122,7 @@ class ESet {
         if (!cur) return nullptr; while (cur->r) cur = cur->r; return cur;
     }
 
-    static Node* successor(Node *root, const Key &k, Compare &comp) {
+    static Node* successor(Node *root, const Key &k, const Compare &comp) {
         Node *ans = nullptr; Node *cur = root;
         while (cur) {
             if (comp(k, cur->key)) { ans = cur; cur = cur->l; }
@@ -130,7 +130,7 @@ class ESet {
         }
         return ans;
     }
-    static Node* predecessor(Node *root, const Key &k, Compare &comp) {
+    static Node* predecessor(Node *root, const Key &k, const Compare &comp) {
         Node *ans = nullptr; Node *cur = root;
         while (cur) {
             if (comp(cur->key, k)) { ans = cur; cur = cur->r; }
@@ -139,7 +139,7 @@ class ESet {
         return ans;
     }
 
-    static int count_lt(Node *cur, const Key &k, Compare &comp) {
+    static int count_lt(Node *cur, const Key &k, const Compare &comp) {
         int res = 0;
         while (cur) {
             if (comp(cur->key, k)) { res += 1 + getsz(cur->l); cur = cur->r; }
@@ -250,7 +250,7 @@ public:
     }
 
     iterator find(const Key &k) const {
-        Node *f = find_node(root, k, const_cast<Compare&>(comp));
+        Node *f = find_node(root, k, comp);
         if (!f) return end();
         return iterator(this, false, f->key);
         }
@@ -258,12 +258,12 @@ public:
     size_t size() const noexcept { return (size_t)getsz(root); }
 
     iterator lower_bound(const Key &k) const {
-        Node *n = lower_node(root, k, const_cast<Compare&>(comp));
+        Node *n = lower_node(root, k, comp);
         if (!n) return end();
         return iterator(this, false, n->key);
     }
     iterator upper_bound(const Key &k) const {
-        Node *n = upper_node(root, k, const_cast<Compare&>(comp));
+        Node *n = upper_node(root, k, comp);
         if (!n) return end();
         return iterator(this, false, n->key);
     }
@@ -278,10 +278,10 @@ public:
     size_t range(const Key &l, const Key &r) const {
         // return count in [l,r]
         if (comp(r, l)) return 0;
-        int lt_l = count_lt(root, l, const_cast<Compare&>(comp));
+        int lt_l = count_lt(root, l, comp);
         // check existence of r
-        int le_r = count_lt(root, r, const_cast<Compare&>(comp));
-        Node *fr = find_node(root, r, const_cast<Compare&>(comp));
+        int le_r = count_lt(root, r, comp);
+        Node *fr = find_node(root, r, comp);
         if (fr) le_r += 1;
         int res = le_r - lt_l;
         if (res < 0) res = 0;
