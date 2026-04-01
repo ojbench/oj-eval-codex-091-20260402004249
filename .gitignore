@@ -4,3 +4,8 @@ CMakeCache.txt
 code
 Makefile
 cmake_install.cmake
+# Local test and ref
+ESet_ref/
+out*.txt
+.env
+.acmoj_token
