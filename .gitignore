@@ -1,0 +1,6 @@
+# Ignore build artifacts
+CMakeFiles/
+CMakeCache.txt
+code
+Makefile
+cmake_install.cmake
