@@ -336,17 +336,18 @@ int main(){
     cin.tie(nullptr);
 
     // Implement the speedtest interface as per ESet test harness.
-    ESet<long long> s[25];
+    std::vector<ESet<long long>> s;
     typename ESet<long long>::iterator it;
-    int op; int lst=0; int it_a=-1; int valid=0; int cnt=1;
+    int op; long long lst=0; long long it_a=-1; int valid=0; int cnt=1;
     while ( (cin >> op) ) {
         long long a,b,c;
         switch(op){
             case 0:{
                 cin >> a >> b;
+                if ((long long)s.size() <= a) s.resize(a+1);
                 auto p = s[a].emplace(b);
                 if (p.second) {
-                    it_a = (int)a;
+                    it_a = a;
                     it = p.first;
                     valid = 1;
                 }
@@ -354,7 +355,8 @@ int main(){
             }
             case 1:{
                 cin >> a >> b;
-                if (valid && it_a==(int)a) {
+                if ((long long)s.size() <= a) s.resize(a+1);
+                if (valid && it_a==a) {
                     try {
                         if (*it == b) valid = 0;
                     } catch (...) {
@@ -366,15 +368,18 @@ int main(){
             }
             case 2:{
                 cin >> a;
+                if ((long long)s.size() <= a) s.resize(a+1);
+                if ((long long)s.size() <= lst+1) s.resize(lst+2);
                 s[++lst] = s[a];
                 break;
             }
             case 3:{
                 cin >> a >> b;
+                if ((long long)s.size() <= a) s.resize(a+1);
                 auto it2 = s[a].find(b);
                 if (it2 != s[a].end()) {
                     cout << "true\n";
-                    it_a = (int)a;
+                    it_a = a;
                     it = it2;
                     valid = 1;
                 } else {
@@ -385,6 +390,7 @@ int main(){
             }
             case 4:{
                 cin >> a >> b >> c;
+                if ((long long)s.size() <= a) s.resize(a+1);
                 cout << s[a].range(b, c) << "\n";
                 cnt++;
                 break;
