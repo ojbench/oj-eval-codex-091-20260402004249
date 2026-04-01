@@ -16,6 +16,9 @@ class ESet {
 
     Node *root = nullptr;
     Compare comp;
+    struct PoolBlock { Node *mem; size_t cap; size_t used; };
+    std::vector<PoolBlock> pool;
+    std::vector<Node*> free_list;
 
     static int getsz(Node *x) { return x ? x->sz : 0; }
     static void pull(Node *x) {
@@ -37,10 +40,47 @@ class ESet {
         return y;
     }
 
+    // allocate/free nodes via pool to minimize allocator overhead
+    Node* allocate_node(const Key &k, uint32_t p) {
+        if (!free_list.empty()) {
+            Node *n = free_list.back(); free_list.pop_back();
+            new (n) Node(k, p);
+            return n;
+        }
+        if (pool.empty() || pool.back().used == pool.back().cap) {
+            size_t next_cap = pool.empty() ? (size_t)32768 : std::min(pool.back().cap * 2, (size_t)1 << 20);
+            void *mem = ::operator new(sizeof(Node) * next_cap);
+            pool.push_back(PoolBlock{static_cast<Node*>(mem), next_cap, 0});
+        }
+        Node *slot = pool.back().mem + pool.back().used++;
+        new (slot) Node(k, p);
+        return slot;
+    }
+    void free_node(Node *n) {
+        if (!n) return;
+        n->~Node();
+        free_list.push_back(n);
+    }
+
+    void clear_tree(Node *cur) {
+        if (!cur) return;
+        clear_tree(cur->l);
+        clear_tree(cur->r);
+        free_node(cur);
+    }
+
+    void release_all_blocks() {
+        for (auto &b : pool) {
+            ::operator delete((void*)b.mem);
+        }
+        pool.clear();
+        free_list.clear();
+    }
+
     // insert unique; returns pair<root, inserted>
     pair<Node*, bool> insert_unique(Node *cur, const Key &k, std::mt19937 &rng) {
         if (!cur) {
-            return { new Node(k, rng()), true }; // prio from rng
+            return { allocate_node(k, rng()), true }; // prio from rng
         }
         if (!comp(k, cur->key) && !comp(cur->key, k)) {
             return { cur, false };
@@ -67,7 +107,7 @@ class ESet {
         if (!cur) return { nullptr, false };
         if (!comp(k, cur->key) && !comp(cur->key, k)) {
             Node *ret = merge(cur->l, cur->r);
-            delete cur;
+            free_node(cur);
             return { ret, true };
         }
         if (comp(k, cur->key)) {
@@ -148,11 +188,7 @@ class ESet {
         return res;
     }
 
-    static void destroy(Node *cur) {
-        if (!cur) return;
-        destroy(cur->l); destroy(cur->r);
-        delete cur;
-    }
+    static void destroy(Node *cur) { /* unused after pooling; keep stub to avoid refactors */ }
 
     static Node* clone(Node *cur) {
         if (!cur) return nullptr;
@@ -209,14 +245,14 @@ public:
     };
 
     ESet() : root(nullptr), comp(Compare()), rng(0xC0FFEEu) {}
-    ~ESet() { destroy(root); root = nullptr; }
+    ~ESet() { clear_tree(root); root = nullptr; release_all_blocks(); }
 
     ESet(const ESet &other) : comp(other.comp), rng(0xC0FFEEu) {
         root = clone(other.root);
     }
     ESet& operator=(const ESet &other) {
         if (this == &other) return *this;
-        destroy(root); root = clone(other.root);
+        clear_tree(root); root = clone(other.root);
         comp = other.comp; // comparator copied by value
         return *this;
     }
@@ -226,9 +262,12 @@ public:
     }
     ESet& operator=(ESet &&other) noexcept {
         if (this == &other) return *this;
-        destroy(root);
+        clear_tree(root); release_all_blocks();
         root = other.root; comp = std::move(other.comp);
         other.root = nullptr;
+        // steal other's pool
+        pool = std::move(other.pool);
+        free_list = std::move(other.free_list);
         return *this;
     }
 
